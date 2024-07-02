@@ -1,8 +1,10 @@
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.test import APIClient, APITestCase
+from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from datetime import datetime
+from unittest import mock
 from users.models import User
 
 class RegistrationTest(TestCase):
@@ -74,7 +76,7 @@ class LogoutTest(TestCase):
 
     def test_valid_token(self):
         response = self.client.post(self.url, {'refresh_token': self.valid_token})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     def test_no_token(self):
         response = self.client.post(self.url)
@@ -84,4 +86,68 @@ class LogoutTest(TestCase):
         response = self.client.post(self.url, {'refresh_token': self.invalid_token})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    
+class EditTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username = 'Ryan1980',
+            password = '********'
+        )
+        access_token = AccessToken.for_user(self.user)
+        self.client = APIClient()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access_token}')
+        
+        self.valid_data = {
+            'username': 'Ryan1980',
+            'first_name': 'Ryan',
+            'last_name': 'Gosling',
+        }
+
+        self.invalid_data = {
+            'first_name': False,
+            'last_name': datetime(day = 12, month = 11, year = 1980),
+        }
+
+        self.url = reverse('users:edit', args = [self.user.pk])
+
+    def test_get_method(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(set(response.data.keys()), set(['username', 'first_name', 'last_name']))
+
+    def test_valid_data(self):
+        response = self.client.put(self.url, self.valid_data)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        user = User.objects.get(pk = self.user.pk)
+        for field, value in self.valid_data.items():
+            self.assertEqual(getattr(user, field), value)
+
+    def test_invalid_data(self):
+        response = self.client.put(self.url, self.invalid_data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+class TestCodeEmailAPIView(APITestCase):
+
+    @mock.patch('users.views.verification_mail.delay')
+    def test_post_request_sends_email(self, mock_verification_mail):
+        mock_verification_mail.return_value = None
+
+        url = reverse('users:verify')
+        data = {
+            'username': 'Ryan1980',
+            'first_name': 'Ryan',
+            'last_name': 'Gosling',
+            'email': 'RyanGosling@gmail.com'
+        }
+
+        response = self.client.post(url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertIn('code', response.data)
+
+        mock_verification_mail.assert_called_once_with(
+            data['username'], data['first_name'], data['last_name'], data['email'], mock.ANY
+        )
+
+        returned_code = response.data['code']
+        self.assertTrue(isinstance(returned_code, int))
+        self.assertTrue(100000 <= returned_code <= 1000000)

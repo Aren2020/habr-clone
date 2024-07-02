@@ -1,11 +1,22 @@
+import random
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import authenticate
-from .serializers import UserSerializer
+from django.shortcuts import get_object_or_404
+from .serializers import UserSerializer, UserEditSerializer
+from .models import User
+from .tasks import verification_mail
+
+def error_response(errors):
+    for field, error_list in errors.items():
+        if isinstance(error_list, list) and len(error_list) > 0:
+            return {'error': f'{field.capitalize()} - {error_list[0]}'}
 
 class RegistrationAPIView(APIView):
+
     def post(self, request):
         serializer = UserSerializer(data = request.data)
         if serializer.is_valid():
@@ -21,12 +32,22 @@ class RegistrationAPIView(APIView):
                 'access': str(refresh.access_token)
             }, status = status.HTTP_201_CREATED)
         
-        errors = serializer.errors
-        for field, error_list in errors.items():
-            if isinstance(error_list, list) and len(error_list) > 0:
-                return Response({'error': error_list[0]}, status = status.HTTP_400_BAD_REQUEST)
-            
+        data = error_response(serializer.errors)
+        return Response(data, status = status.HTTP_400_BAD_REQUEST)
+
+class CodeEmailAPIView(APIView):
+    '''Send email with random code which check in frontend'''
+
+    def post(self, request):
+        data = request.data
+        code = random.randint(100000, 1000000)
+        verification_mail.delay(data['username'], data['first_name'],
+                                data['last_name'], data['email'], code)
+        return Response({'code': code},
+                        status = status.HTTP_204_NO_CONTENT)
+
 class LoginAPIView(APIView):
+
     def post(self, request):
         data = request.data
         username = data.get('username')
@@ -52,6 +73,7 @@ class LoginAPIView(APIView):
         }, status = status.HTTP_200_OK)
 
 class LogoutAPIView(APIView):
+
     def post(self, request):
         refresh_token = request.data.get('refresh_token')
         if not refresh_token:
@@ -65,5 +87,25 @@ class LogoutAPIView(APIView):
             return Response({'error': 'Incorrect Refresh token'},
                             status = status.HTTP_400_BAD_REQUEST)
 
-        return Response(status = status.HTTP_200_OK)
+        return Response(status = status.HTTP_204_NO_CONTENT)
 
+class EditAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        serializer = UserEditSerializer(request.user)
+        return Response(serializer.data, status = status.HTTP_200_OK)
+    
+    def put(self, request, pk):
+        user = get_object_or_404(User, pk = pk)
+        serializer = UserEditSerializer(user, data = request.data)
+        if serializer.is_valid():
+            username = serializer.validated_data['username']
+            if not User.objects.filter(username = username).exclude(pk = pk).exists():
+                serializer.save()
+                return Response(status = status.HTTP_204_NO_CONTENT)
+            return Response({'error': 'Username - Already in use'},
+                            status = status.HTTP_400_BAD_REQUEST)
+
+        data = error_response(serializer.errors)
+        return Response(data, status = status.HTTP_400_BAD_REQUEST)
