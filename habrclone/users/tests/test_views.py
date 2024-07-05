@@ -115,14 +115,14 @@ class EditTest(TestCase):
         self.assertEqual(set(response.data.keys()), set(['username', 'first_name', 'last_name']))
 
     def test_valid_data(self):
-        response = self.client.patch(self.url, self.valid_data)
+        response = self.client.put(self.url, self.valid_data)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         user = User.objects.get(pk = self.user.pk)
         for field, value in self.valid_data.items():
             self.assertEqual(getattr(user, field), value)
 
     def test_invalid_data(self):
-        response = self.client.patch(self.url, self.invalid_data)
+        response = self.client.put(self.url, self.invalid_data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 class TestCodeEmailAPIView(APITestCase):

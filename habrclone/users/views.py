@@ -96,7 +96,7 @@ class EditAPIView(APIView):
         serializer = UserEditSerializer(request.user)
         return Response(serializer.data, status = status.HTTP_200_OK)
     
-    def patch(self, request, pk):
+    def put(self, request, pk):
         user = get_object_or_404(User, pk = pk)
         serializer = UserEditSerializer(user, data = request.data)
         if serializer.is_valid():
