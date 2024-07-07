@@ -115,14 +115,14 @@ class EditTest(TestCase):
         self.assertEqual(set(response.data.keys()), set(['username', 'first_name', 'last_name']))
 
     def test_valid_data(self):
-        response = self.client.put(self.url, self.valid_data)
+        response = self.client.patch(self.url, self.valid_data)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         user = User.objects.get(pk = self.user.pk)
         for field, value in self.valid_data.items():
             self.assertEqual(getattr(user, field), value)
 
     def test_invalid_data(self):
-        response = self.client.put(self.url, self.invalid_data)
+        response = self.client.patch(self.url, self.invalid_data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 class TestCodeEmailAPIView(APITestCase):
@@ -151,3 +151,47 @@ class TestCodeEmailAPIView(APITestCase):
         returned_code = response.data['code']
         self.assertTrue(isinstance(returned_code, int))
         self.assertTrue(100000 <= returned_code <= 1000000)
+
+class ChangePasswordAPIView(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username = 'Ryan1980',
+            password = '********'
+        )
+        self.user_pk = self.user.pk
+        access_token = AccessToken.for_user(self.user)
+        self.client = APIClient()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access_token}')
+
+        self.valid_data = {
+            'old_password': '********',
+            'new_password': 'Ryan1980'
+        }
+
+        self.wrong_password = {
+            'old_password': 'Ryan1980',
+            'new_password': 'Ryan1980'
+        }
+
+        self.invalid_data = {
+            'old_password': '********',
+        }
+
+        self.url = reverse('users:password_change')
+    
+    def test_valid_data(self):
+        response = self.client.patch(self.url, self.valid_data)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        
+        user = User.objects.get(pk = self.user_pk)
+        new_password = self.valid_data['new_password']
+        self.assertTrue( user.check_password( new_password ))
+
+    def test_wrong_password(self):
+        response = self.client.patch(self.url, self.wrong_password)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    
+    def test_invalid_data(self):
+        response = self.client.patch(self.url, self.invalid_data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+

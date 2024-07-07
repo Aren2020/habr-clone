@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
-from .serializers import UserSerializer, UserEditSerializer
+from .serializers import UserSerializer, UserEditSerializer, ChangePasswordSerializer
 from .models import User
 from .tasks import verification_mail
 
@@ -20,7 +20,12 @@ class RegistrationAPIView(APIView):
     def post(self, request):
         serializer = UserSerializer(data = request.data)
         if serializer.is_valid():
-            user = serializer.save()
+            data = serializer.validated_data
+            password = data.pop('password')
+
+            user = User.objects.create(**data)
+            user.set_password(password)
+            user.save()
             refresh = RefreshToken.for_user(user)
             refresh.payload.update({
                 'user_id': user.id,
@@ -96,7 +101,7 @@ class EditAPIView(APIView):
         serializer = UserEditSerializer(request.user)
         return Response(serializer.data, status = status.HTTP_200_OK)
     
-    def put(self, request, pk):
+    def patch(self, request, pk):
         user = get_object_or_404(User, pk = pk)
         serializer = UserEditSerializer(user, data = request.data)
         if serializer.is_valid():
@@ -109,3 +114,27 @@ class EditAPIView(APIView):
 
         data = error_response(serializer.errors)
         return Response(data, status = status.HTTP_400_BAD_REQUEST)
+    
+class ChangePasswordAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        serializer = ChangePasswordSerializer(data = request.data)
+        if serializer.is_valid():
+            data = serializer.validated_data
+            user = request.user
+            
+            old_password = data['old_password']
+            if not user.check_password(old_password):
+                return Response({'error': 'Old password dont match with your current'},
+                                status = status.HTTP_400_BAD_REQUEST)
+            
+            new_password = data['new_password']
+            user.set_password(new_password)
+            user.save()
+
+            return Response(status = status.HTTP_204_NO_CONTENT)
+
+        data = error_response(serializer.errors)
+        return Response(data, status = status.HTTP_400_BAD_REQUEST)
+
