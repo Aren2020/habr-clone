@@ -9,10 +9,16 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['username', 'first_name', 'last_name', 'email', 'password']
 
     def validate_username(self, username):
-        '''username is unique'''
+        '''Username is unique'''
         if User.objects.filter(username=username).exists():
             raise serializers.ValidationError("This username is already in use.")
         return username
+
+    def validate_email(self, email):
+        '''Email is unique'''
+        if User.objects.filter(email = email).exists():
+            raise serializers.ValidationError("This email is already in use.")
+        return email
 
 class UserEditSerializer(serializers.ModelSerializer):
     

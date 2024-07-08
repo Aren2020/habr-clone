@@ -26,6 +26,7 @@ class RegistrationAPIView(APIView):
             user = User.objects.create(**data)
             user.set_password(password)
             user.save()
+            
             refresh = RefreshToken.for_user(user)
             refresh.payload.update({
                 'user_id': user.id,
