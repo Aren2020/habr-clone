@@ -50,7 +50,7 @@ class CodeEmailAPIView(APIView):
         verification_mail.delay(data['username'], data['first_name'],
                                 data['last_name'], data['email'], code)
         return Response({'code': code},
-                        status = status.HTTP_204_NO_CONTENT)
+                        status = status.HTTP_200_OK)
 
 class LoginAPIView(APIView):
 

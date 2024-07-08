@@ -141,7 +141,7 @@ class TestCodeEmailAPIView(APITestCase):
 
         response = self.client.post(url, data)
 
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('code', response.data)
 
         mock_verification_mail.assert_called_once_with(
