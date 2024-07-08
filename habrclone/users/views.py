@@ -98,16 +98,16 @@ class LogoutAPIView(APIView):
 class EditAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, pk):
+    def get(self, request):
         serializer = UserEditSerializer(request.user)
         return Response(serializer.data, status = status.HTTP_200_OK)
     
-    def patch(self, request, pk):
-        user = get_object_or_404(User, pk = pk)
+    def patch(self, request):
+        user = request.user
         serializer = UserEditSerializer(user, data = request.data)
         if serializer.is_valid():
             username = serializer.validated_data['username']
-            if not User.objects.filter(username = username).exclude(pk = pk).exists():
+            if not User.objects.filter(username = username).exclude(pk = user.pk).exists():
                 serializer.save()
                 return Response(status = status.HTTP_204_NO_CONTENT)
             return Response({'error': 'Username - Already in use'},

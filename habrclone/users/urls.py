@@ -10,6 +10,6 @@ urlpatterns = [
     path('registration/', views.RegistrationAPIView.as_view(), name = 'registration'),
     path('token/refresh/', TokenRefreshView.as_view(), name = 'token_refresh'),
     path('verify/mail/', views.CodeEmailAPIView.as_view(), name = 'verify'),
-    path('<int:pk>/edit/', views.EditAPIView.as_view(), name = 'edit'),
+    path('edit/', views.EditAPIView.as_view(), name = 'edit'),
     path('password/change/', views.ChangePasswordAPIView.as_view(), name = 'password_change')
 ]

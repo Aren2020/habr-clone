@@ -107,7 +107,7 @@ class EditTest(TestCase):
             'last_name': datetime(day = 12, month = 11, year = 1980),
         }
 
-        self.url = reverse('users:edit', args = [self.user.pk])
+        self.url = reverse('users:edit')
 
     def test_get_method(self):
         response = self.client.get(self.url)
