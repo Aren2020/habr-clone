@@ -4,11 +4,13 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from django.contrib.auth import authenticate
-from django.shortcuts import get_object_or_404
-from .serializers import UserSerializer, UserEditSerializer, ChangePasswordSerializer
-from .models import User
-from .tasks import verification_mail
+from django.contrib.auth import authenticate, update_session_auth_hash
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.conf import settings
+from .serializers import (UserSerializer, UserEditSerializer, ChangePasswordSerializer, 
+                          ResetPasswordSerializer, ResetPasswordDoneSerializer)
+from .models import User, PasswordReset
+from .tasks import verification_mail,  password_reset_mail
 
 def error_response(errors):
     for field, error_list in errors.items():
@@ -47,8 +49,8 @@ class CodeEmailAPIView(APIView):
     def post(self, request):
         data = request.data
         code = random.randint(100000, 1000000)
-        verification_mail.delay(data['username'], data['first_name'],
-                                data['last_name'], data['email'], code)
+        verification_mail.delay(data['username'], f'{data["first_name"]} {data["last_name"]}',
+                                data['email'], code)
         return Response({'code': code},
                         status = status.HTTP_200_OK)
 
@@ -133,9 +135,55 @@ class ChangePasswordAPIView(APIView):
             new_password = data['new_password']
             user.set_password(new_password)
             user.save()
+            update_session_auth_hash(request, user)
 
             return Response(status = status.HTTP_204_NO_CONTENT)
 
         data = error_response(serializer.errors)
         return Response(data, status = status.HTTP_400_BAD_REQUEST)
+
+class PasswordResetAPIView(APIView):
+
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data = request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            user = User.objects.get(email = email)
+
+            if user:
+                token_generator = PasswordResetTokenGenerator()
+                token = token_generator.make_token(user)
+                reset = PasswordReset(email = email, token = token)
+                reset.save()
+
+                reset_url = f"{settings.FRONTEND_PASSWORD_RESET_URL}?token={token}"
+                password_reset_mail.delay(user.username, user.get_full_name(), email, reset_url)
+
+                return Response(status = status.HTTP_204_NO_CONTENT)
+        
+        data = error_response(serializer.errors)
+        return Response(data, status = status.HTTP_400_BAD_REQUEST)
+
+class PasswordResetDoneAPIView(APIView):
+    
+    def post(self, request, token):
+        serializer = ResetPasswordDoneSerializer(data = request.data)
+        if serializer.is_valid():
+            data = serializer.validated_data
+            reset_obj = PasswordReset.objects.get(token = token)
+            if not reset_obj:
+                return Response({'error':'Invalid token'}, status = status.HTTP_400_BAD_REQUEST)
+            
+            user = User.objects.get(email = reset_obj.email)
+            if not user:
+                return Response({'error':'No user found'}, status = status.HTTP_404_NOT_FOUND)
+            user.set_password(data['password'])
+            user.save()
+            reset_obj.delete()
+
+            return Response(status = status.HTTP_204_NO_CONTENT)
+
+        data = error_response(serializer.errors)
+        return Response(data, status = status.HTTP_400_BAD_REQUEST)
+
 

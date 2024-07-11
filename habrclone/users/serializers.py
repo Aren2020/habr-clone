@@ -7,6 +7,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['username', 'first_name', 'last_name', 'email', 'password']
+        
 
     def validate_username(self, username):
         '''Username is unique'''
@@ -30,3 +31,9 @@ class ChangePasswordSerializer(serializers.Serializer):
     
     old_password = serializers.CharField(required = True)
     new_password = serializers.CharField(required = True)
+
+class ResetPasswordSerializer(serializers.Serializer):    
+    email = serializers.EmailField(required = True)
+
+class ResetPasswordDoneSerializer(serializers.Serializer):    
+    password = serializers.CharField(write_only = True, required = True)

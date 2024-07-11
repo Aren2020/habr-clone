@@ -138,6 +138,8 @@ AUTHENTICATION_BACKENDS = [
     'users.authentication.EmailAuthBackend',
 ]
 
+FRONTEND_PASSWORD_RESET_URL= r'http://localhost:5173/users/password/reset/'
+
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
