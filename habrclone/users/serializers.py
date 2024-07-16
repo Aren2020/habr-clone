@@ -24,8 +24,16 @@ class UserSerializer(serializers.ModelSerializer):
 class UserEditSerializer(serializers.ModelSerializer):
     
     class Meta:
-        model = User
+        model = User    
         fields = ['username', 'first_name', 'last_name']
+
+class CodeEmailSerializer(serializers.Serializer):
+    
+    username = serializers.CharField(max_length = 200, required = True)
+    first_name = serializers.CharField(max_length = 200, required = True)
+    last_name = serializers.CharField(max_length = 200, required = True)
+    email = serializers.EmailField(required = True)
+
 
 class ChangePasswordSerializer(serializers.Serializer):
     

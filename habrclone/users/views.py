@@ -4,11 +4,13 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from django.contrib.auth import authenticate, update_session_auth_hash
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.conf import settings
 from .serializers import (UserSerializer, UserEditSerializer, ChangePasswordSerializer, 
-                          ResetPasswordSerializer, ResetPasswordDoneSerializer)
+                          ResetPasswordSerializer, ResetPasswordDoneSerializer, CodeEmailSerializer)
 from .models import User, PasswordReset
 from .tasks import verification_mail,  password_reset_mail
 
@@ -18,7 +20,15 @@ def error_response(errors):
             return {'error': f'{field.capitalize()} - {error_list[0]}'}
 
 class RegistrationAPIView(APIView):
-
+    
+    @swagger_auto_schema(
+        operation_description = 'User Registration Endpoint',
+        request_body = UserSerializer,
+        responses = {
+            201: 'Successful registration',
+            400: 'Invalid data provided',
+        }
+    )
     def post(self, request):
         serializer = UserSerializer(data = request.data)
         if serializer.is_valid():
@@ -46,16 +56,51 @@ class RegistrationAPIView(APIView):
 class CodeEmailAPIView(APIView):
     '''Send email with random code which check in frontend'''
 
+    @swagger_auto_schema(
+        operation_description = 'Send verifcation code to the user email',
+        request_body = CodeEmailSerializer,
+        responses = {
+            201: 'Email is successfully sended',
+            400: 'Invalid data provided',
+        }
+    )
     def post(self, request):
-        data = request.data
-        code = random.randint(100000, 1000000)
-        verification_mail.delay(data['username'], f'{data["first_name"]} {data["last_name"]}',
-                                data['email'], code)
-        return Response({'code': code},
-                        status = status.HTTP_200_OK)
+        serializer = CodeEmailSerializer(data = request.data)
+        if serializer.is_valid():
+            data = request.data
+            code = random.randint(100000, 1000000)
+            verification_mail.delay(data['username'], f'{data["first_name"]} {data["last_name"]}',
+                                    data['email'], code)
+            return Response({'code': code},
+                            status = status.HTTP_200_OK)
+        
+        data = error_response(serializer.errors)
+        return Response(data, status = status.HTTP_400_BAD_REQUEST)
 
 class LoginAPIView(APIView):
 
+    @swagger_auto_schema(
+        operation_description = 'User Authentication Endpoint',
+        request_body = openapi.Schema(
+            type = openapi.TYPE_OBJECT,
+            required = ['username', 'password'],
+            properties = {
+                'username': openapi.Schema(type = openapi.TYPE_STRING),
+                'password': openapi.Schema(type = openapi.TYPE_STRING)
+            },
+        ),
+        responses = {
+            200: openapi.Response('Successful authentication', schema = openapi.Schema(
+                type = openapi.TYPE_OBJECT,
+                properties = {
+                    'refresh': openapi.Schema(type = openapi.TYPE_STRING),
+                    'access': openapi.Schema(type = openapi.TYPE_STRING),
+                }
+            )),
+            400: 'Login and password fields are required',
+            401: 'Invalid data',
+        }
+    )
     def post(self, request):
         data = request.data
         username = data.get('username')
@@ -82,6 +127,20 @@ class LoginAPIView(APIView):
 
 class LogoutAPIView(APIView):
 
+    @swagger_auto_schema(
+        operation_description = 'User Logout Endpoint',
+        request_body = openapi.Schema(
+            type = openapi.TYPE_OBJECT,
+            required = ['refresh_token'],
+            properties = {
+                'refresh_token': openapi.Schema(type = openapi.TYPE_STRING)
+            },
+        ),
+        responses = {
+            204: 'Successfully logged out',
+            400: 'Bad refresh token or token absence',
+        }
+    )
     def post(self, request):
         refresh_token = request.data.get('refresh_token')
         if not refresh_token:
@@ -100,10 +159,42 @@ class LogoutAPIView(APIView):
 class EditAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        operation_description = 'Retrieve user details',
+        responses = {
+            200: openapi.Response('User details', UserEditSerializer),
+        },
+        manual_parameters = [
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description = 'Bearer <token>',
+                type = openapi.TYPE_STRING,
+                required = True
+            ),
+        ]
+    )
     def get(self, request):
         serializer = UserEditSerializer(request.user)
         return Response(serializer.data, status = status.HTTP_200_OK)
     
+    @swagger_auto_schema(
+        operation_description = 'Update user details',
+        request_body = UserEditSerializer,
+        responses = {
+            204: 'User details updated successfully',
+            400: 'Invalid data provided or username already in use',
+        },
+        manual_parameters = [
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description = 'Bearer <token>',
+                type = openapi.TYPE_STRING,
+                required = True
+            ),
+        ]
+    )
     def patch(self, request):
         user = request.user
         serializer = UserEditSerializer(user, data = request.data)
@@ -121,6 +212,23 @@ class EditAPIView(APIView):
 class ChangePasswordAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        operation_description = 'Change user password',
+        request_body = ChangePasswordSerializer,
+        responses = {
+            204: 'Password changed successfully',
+            400: 'Invalid data provided or old password does not match',
+        },
+        manual_parameters = [
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description = 'Bearer <token>',
+                type = openapi.TYPE_STRING,
+                required = True
+            ),
+        ]
+    )
     def patch(self, request):
         serializer = ChangePasswordSerializer(data = request.data)
         if serializer.is_valid():
@@ -144,6 +252,14 @@ class ChangePasswordAPIView(APIView):
 
 class PasswordResetAPIView(APIView):
 
+    @swagger_auto_schema(
+        operation_description = 'Send email for password reset',
+        request_body = ResetPasswordSerializer,
+        responses = {
+            204: 'Password reset initiated successfully',
+            400: 'Invalid data provided or user with specified email does not exist',
+        }
+    )
     def post(self, request):
         serializer = ResetPasswordSerializer(data = request.data)
         if serializer.is_valid():
@@ -166,6 +282,21 @@ class PasswordResetAPIView(APIView):
 
 class PasswordResetDoneAPIView(APIView):
     
+    @swagger_auto_schema(
+        operation_description = 'Complete password reset',
+        request_body = openapi.Schema(
+            type = openapi.TYPE_OBJECT,
+            properties = {
+                'password': openapi.Schema(type = openapi.TYPE_STRING),
+            },
+            required = ['password'],
+        ),
+        responses = {
+            204: 'Password reset successfully completed',
+            400: 'Invalid data provided or invalid token',
+            404: 'No user found for the provided token',
+        }
+    )
     def post(self, request, token):
         serializer = ResetPasswordDoneSerializer(data = request.data)
         if serializer.is_valid():
