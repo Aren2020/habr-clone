@@ -69,7 +69,8 @@ class CodeEmailAPIView(APIView):
         if serializer.is_valid():
             data = request.data
             code = random.randint(100000, 1000000)
-            verification_mail.delay(data['username'], f'{data["first_name"]} {data["last_name"]}',
+            full_name = f'{data["first_name"]} {data["last_name"]}' or data['username']
+            verification_mail.delay(data['username'], full_name,
                                     data['email'], code)
             return Response({'code': code},
                             status = status.HTTP_200_OK)
