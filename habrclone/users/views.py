@@ -196,7 +196,7 @@ class EditAPIView(APIView):
             ),
         ]
     )
-    def patch(self, request):
+    def put(self, request):
         user = request.user
         serializer = UserEditSerializer(user, data = request.data)
         if serializer.is_valid():
