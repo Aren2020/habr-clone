@@ -273,7 +273,7 @@ class PasswordResetAPIView(APIView):
                 reset = PasswordReset(email = email, token = token)
                 reset.save()
 
-                reset_url = f"{settings.FRONTEND_PASSWORD_RESET_URL}/{token}/"
+                reset_url = f"{settings.FRONTEND_PASSWORD_RESET_URL}{token}/"
                 password_reset_mail.delay(user.username, user.get_full_name(), email, reset_url)
 
                 return Response(status = status.HTTP_204_NO_CONTENT)
