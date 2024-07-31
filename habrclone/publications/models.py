@@ -10,7 +10,6 @@ class Publication(models.Model):
     created_at = models.DateTimeField(auto_now_add = True)
     mention = models.ManyToManyField(User, related_name = '%(class)s_mentions')
     
-    title = models.CharField(max_length = 200)
     # views redis db
     # tags = 
     

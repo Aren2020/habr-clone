@@ -9,18 +9,13 @@ class UserSerializer(serializers.ModelSerializer):
                   'first_name', 'last_name',
                   'username', 'email']
 
-def get_publiaction_data(type, id):
-    if type == 'posts':
-        post = Post.objects.get(id = id) # in servieces
-        serializer = PostSerializer(post)
-    return [{ 'publication' : serializer.data }]
 
 class PublicationSerializer(serializers.ModelSerializer):
     author = UserSerializer()
     mention = UserSerializer(many = True)
     class Meta:
         model = Post
-        fields = ['id', 'title', 'author', 'mention', 'created_at'] # add author and mention
+        fields = ['id', 'author', 'mention', 'created_at'] # add author and mention
 
 class PostSerializer(PublicationSerializer):
     pass

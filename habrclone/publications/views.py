@@ -1,9 +1,10 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import status
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from .services.publications import Publication
-from .serializers import ContentSerializer, get_publiaction_data
+from .serializers import ContentSerializer
 
 class PublicationApiView(APIView):
     ### add error handling
@@ -86,17 +87,24 @@ class PublicationApiView(APIView):
             ),
             404: openapi.Response(
                 description = "Not Found",
-                examples={
+                examples = {
                     'application/json': {"error": "Publication not found"}
                 }
             )
         }
     )
     def get(self, request, type, id):
-        publication = Publication(type)
-        publication_data = get_publiaction_data(type, id)
-        contents = publication.detail(id)
+        
+        publication = Publication(type, id)
+        if publication.invalid_publication_type:
+            return Response(status = status.HTTP_400_BAD_REQUEST)
+
+        publication_data = publication.get_publication_data()
+        if not publication_data:
+            return Response(status = status.HTTP_404_NOT_FOUND)
+    
+        contents = publication.detail()
         serializer = ContentSerializer(contents, many = True)
-        print(publication_data, serializer.data)
+
         data = serializer.data + publication_data
         return Response(data)
