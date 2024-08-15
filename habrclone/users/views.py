@@ -319,3 +319,13 @@ class PasswordResetDoneAPIView(APIView):
         return Response(data, status = status.HTTP_400_BAD_REQUEST)
 
 
+class SearchAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, query):
+        users = User.objects.filter(
+            username__icontains = query
+        ).exclude( username = request.user.username )[:5]
+
+        serializer = UserEditSerializer(users, many = True)
+        return Response( serializer.data )

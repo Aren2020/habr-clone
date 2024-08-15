@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.contenttypes.models import ContentType
-from .models import Content, Post, Text, Image, File, Video, User
+from .models import Content, Text, Image, File, Video, User
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -8,17 +8,6 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 
                   'first_name', 'last_name',
                   'username', 'email']
-
-
-class PublicationSerializer(serializers.ModelSerializer):
-    author = UserSerializer()
-    mention = UserSerializer(many = True)
-    class Meta:
-        model = Post
-        fields = ['id', 'author', 'mention', 'created_at'] # add author and mention
-
-class PostSerializer(PublicationSerializer):
-    pass
 
 class TextSerializer(serializers.ModelSerializer):
     class Meta:
@@ -40,30 +29,32 @@ class VideoSerializer(serializers.ModelSerializer):
         model = Video
         fields = ['item_name', 'url']
 
-class GenericRelatedField(serializers.RelatedField):
-    def to_representation(self, value):
-        if isinstance(value, Text):
-            serializer = TextSerializer(value)
-        elif isinstance(value, File):
-            serializer = FileSerializer(value)
-        elif isinstance(value, Image):
-            serializer = ImageSerializer(value)
-        elif isinstance(value, Video):
-            serializer = VideoSerializer(value)
-        return serializer.data
-
-    def to_internal_value(self, data):
-        model = data.get('item_name')
-        model_class = ContentType.objects.get(model = model).model_class()
-
-        try:
-            return model_class.objects.get(id = data.get('id'))
-        except model_class.DoesNotExist:
-            raise serializers.ValidationError(f"No {model} found with the ID {data.get('id')}")
     
 class ContentSerializer(serializers.ModelSerializer):
-    item = GenericRelatedField(read_only = True)
+    item = serializers.SerializerMethodField()
 
     class Meta:
         model = Content
         fields = ['id', 'item']
+
+    def get_item(self, obj):
+        item = obj.item
+        if isinstance(item, Text):
+            return TextSerializer(item).data
+        elif isinstance(item, File):
+            return FileSerializer(item).data
+        elif isinstance(item, Image):
+            return ImageSerializer(item).data
+        elif isinstance(item, Video):
+            return VideoSerializer(item).data
+        return None
+
+
+class PublicationListSerializer(serializers.ModelSerializer):
+    author = UserSerializer()
+    mention = UserSerializer(many = True)
+
+    class Meta:
+        exclude = ['likes', 'dislikes']
+
+        
