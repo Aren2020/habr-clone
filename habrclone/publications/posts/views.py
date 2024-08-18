@@ -5,9 +5,11 @@ from rest_framework import status
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from ..views import PublicationEditAPIView
-from .serializers import PostSerializer, PostEditSerializer
+from .serializers import PostSerializer
 from .services import PostService
 from .models import Post
+
+post_service = PostService()
 
 class ListAPIView(APIView):
     def get_permissions(self):
@@ -27,7 +29,6 @@ class ListAPIView(APIView):
         }
     )
     def get(self, request):
-        post_service = PostService()
         page_number = request.GET.get('page_number')
         posts_data = post_service.list(page_number)
         return Response( posts_data )
@@ -36,18 +37,20 @@ class ListAPIView(APIView):
 
         serializer = PostSerializer(data = request.data)
         if serializer.is_valid():
-            serializer.save()
-            
+            serializer.save(author = request.user)
+            if serializer.validated_data['status']:
+                post_service.add_publication_creation()
+                
             return Response(status = status.HTTP_204_NO_CONTENT)
         return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
 
 class EditAPIView(PublicationEditAPIView):
 
     def get(self, request, post_id):
-        return PublicationEditAPIView.get(self, Post, post_id, PostEditSerializer)
+        return PublicationEditAPIView.get(self, Post, post_id, PostSerializer)
 
     def put(self, request, post_id):
-        return PublicationEditAPIView.put(self, request, Post, post_id, PostEditSerializer)
+        return PublicationEditAPIView.put(self, request, Post, post_id, PostSerializer)
     
     def delete(self, request, post_id):
         return PublicationEditAPIView.delete(self, request, Post, post_id)

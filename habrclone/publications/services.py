@@ -1,16 +1,12 @@
-from abc import ABC,abstractmethod 
+from abc import ABC, abstractmethod 
 from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.paginator import Paginator
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from publications.posts.models import Post
-from publications.news.models import News
-from publications.articles.models import Article
-from rest_framework.response import Response
-from rest_framework import status
 from .models import Content
 from .serializers import ContentSerializer
+from datetime import date
 import redis
 
 r = redis.Redis(host = settings.REDIS_HOST,
@@ -111,6 +107,16 @@ class PublicationService(ABC):
             read_time += words_count // 180 # 180 words per minute
 
         return read_time
+
+    def add_publication_creation(self):
+        today = date.today()
+        key = f'{today}:{self.publication_app}'
+        r.incr(key)
+    
+    def get_publcation_creation(self):
+        today = date.today()
+        key = f'{today}:{self.publication_app}'
+        return r.get(key)
 
     @abstractmethod
     def list(self):

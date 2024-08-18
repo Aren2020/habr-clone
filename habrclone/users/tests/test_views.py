@@ -109,6 +109,7 @@ class EditTest(APITestCase):
         self.invalid_data = {
             'first_name': False,
             'last_name': datetime(day = 12, month = 11, year = 1980),
+            'profile_picture': 'WTF IS KILOMETR',
         }
 
         self.url = reverse('users:edit')
@@ -116,7 +117,7 @@ class EditTest(APITestCase):
     def test_get_method(self):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(set(response.data.keys()), set(['username', 'first_name', 'last_name']))
+        self.assertEqual(set(response.data.keys()), set(['username', 'first_name', 'last_name', 'profile_picture']))
 
     def test_valid_data(self):
         response = self.client.put(self.url, self.valid_data)
@@ -258,3 +259,43 @@ class PasswordResetDoneTest(APITestCase):
     def test_invalid_url(self):
         response = self.client.post(self.invalid_token)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    
+class SearchTest(APITestCase):
+
+    def setUp(self):
+        User.objects.create_user(
+            username = 'Vzgo',
+            first_name = 'Vzgo',
+            last_name = 'Karpuch',
+            password = 'Vzgo2024'
+        )
+        User.objects.create_user(
+            username = 'Vrdo',
+            first_name = 'Vrdo',
+            last_name = 'Tak',
+            password = 'Vrdo2024'
+        )
+
+        self.users_exists_url = reverse('users:search', args = ['V'])
+        self.users_dont_exists_url = reverse('users:search', args = ['fuflo'])
+
+        samson = User.objects.create_user(
+            username = 'Smo',
+            first_name = 'Smo',
+            last_name = 'Tpl',
+            password = 'Smo2024'
+        )
+        access_token = AccessToken.for_user(samson)
+        self.client.credentials(HTTP_AUTHORIZATION = f'Bearer {access_token}')
+    
+    def test_users_exists(self):
+        res = self.client.get(self.users_exists_url)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.data), 2)
+    
+    def test_users_dont_exists(self):
+        res = self.client.get(self.users_dont_exists_url)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.data), 0)

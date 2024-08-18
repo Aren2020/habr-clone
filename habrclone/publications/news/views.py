@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from ..views import PublicationEditAPIView
-from .serializers import NewsSerializer, NewsEditSerializer
+from .serializers import NewsSerializer
 from .services import NewsService
 from .models import News
 
@@ -24,7 +24,10 @@ class ListAPIView(APIView):
 
         serializer = NewsSerializer(data = request.data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(author = request.user)
+            if serializer.validated_data['status']:
+                news_service.add_publication_creation()
+
             return Response(status = status.HTTP_200_OK)
         return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
     
@@ -38,10 +41,10 @@ class DetailAPIView(APIView):
 class EditAPIView(PublicationEditAPIView):
 
     def get(self, request, news_id):
-        return PublicationEditAPIView.get(self, News, news_id, NewsEditSerializer)
+        return PublicationEditAPIView.get(self, News, news_id, NewsSerializer)
 
     def put(self, request, news_id):
-        return PublicationEditAPIView.put(self, request, News, news_id, NewsEditSerializer)
+        return PublicationEditAPIView.put(self, request, News, news_id, NewsSerializer)
     
     def delete(self, request, news_id):
         return PublicationEditAPIView.delete(self, request, News, news_id)

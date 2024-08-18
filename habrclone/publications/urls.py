@@ -6,8 +6,8 @@ app_name = 'publications'
 urlpatterns = [
     path('contents/<publication_type>/<int:publication_id>/<model_name>/',
           views.ContentAPIView.as_view(), name = 'content_create'),
-    path('contents/<publication_type>/<int:publication_id>/<model_name>/<int:content_id>/',
-          views.ContentDetailAPIView.as_view(), name = 'content_detail'),
+    path('items/<model_name>/<int:item_id>/',
+          views.ItemDetailAPIView.as_view(), name = 'item_detail'),
 
     path('posts/', include('publications.posts.urls', namespace = 'posts')),
     path('articles/', include('publications.articles.urls', namespace = 'articles')),

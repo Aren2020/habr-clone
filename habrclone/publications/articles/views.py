@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from ..views import PublicationEditAPIView
 from .services import ArticleService
 from .models import Article
-from .serializers import ArticleSerializer, ArticleEditSerializer
+from .serializers import ArticleSerializer
 
 article_service = ArticleService()
 
@@ -24,11 +24,9 @@ class ListAPIView(APIView):
 
         serializer = ArticleSerializer(data = request.data)
         if serializer.is_valid():
-
-            article = serializer.save(
-                author = request.user,
-            )
-            article.save()
+            serializer.save(author = request.user)
+            if serializer.validated_data['status']:
+                article_service.add_publication_creation()
             
             return Response(status = status.HTTP_200_OK)
         return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
@@ -43,10 +41,10 @@ class DetailAPIView(APIView):
 class EditAPIView(PublicationEditAPIView):
 
     def get(self, request, article_id):
-        return PublicationEditAPIView.get(self, Article, article_id, ArticleEditSerializer)
+        return PublicationEditAPIView.get(self, Article, article_id, ArticleSerializer)
 
     def put(self, request, article_id):
-        return PublicationEditAPIView.put(self, request, Article, article_id, ArticleEditSerializer)
+        return PublicationEditAPIView.put(self, request, Article, article_id, ArticleSerializer)
     
     def delete(self, request, article_id):
         return PublicationEditAPIView.delete(self, request, Article, article_id)

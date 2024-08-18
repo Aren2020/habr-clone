@@ -324,7 +324,7 @@ class SearchAPIView(APIView):
 
     def get(self, request, query):
         users = User.objects.filter(
-            username__icontains = query
+            username__istartswith = query
         ).exclude( username = request.user.username )[:5]
 
         serializer = UserEditSerializer(users, many = True)

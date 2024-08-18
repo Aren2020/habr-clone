@@ -50,6 +50,8 @@ class Publication(models.Model):
         ]
 
 class ItemBase(models.Model):
+    creator = models.ForeignKey(User, related_name = '%(class)s_items',
+                                on_delete = models.CASCADE)
     item_name = models.CharField(max_length = 5, blank = True, default = '')
 
     def save(self, *args, **kwargs):

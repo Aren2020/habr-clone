@@ -6,20 +6,6 @@ from taggit.serializers import (TagListSerializerField,
                                 TaggitSerializer)
 
 class ArticleSerializer(TaggitSerializer, serializers.ModelSerializer):
-    author = serializers.PrimaryKeyRelatedField(queryset = User.objects.all())
-    mention = serializers.PrimaryKeyRelatedField(many = True, queryset = User.objects.all())
-    tags = TagListSerializerField()
-
-    class Meta:
-        model = Article
-        fields = [
-            'author', 'mention',
-            'status', 'title',
-            'intro_text', 'intro_image',
-            'level', 'tags'
-        ]
-
-class ArticleEditSerializer(TaggitSerializer, serializers.ModelSerializer):
     mention = serializers.PrimaryKeyRelatedField(many = True, queryset = User.objects.all())
     tags = TagListSerializerField()
 
