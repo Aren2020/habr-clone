@@ -120,3 +120,9 @@ class ItemTest(APITestCase):
         self.assertEqual(Content.objects.count(), 0)
         self.assertFalse(Text.objects.filter(id = self.text.id).exists())
 
+# this is out test i think that this isnt the right way but django dont find the test
+# in posts articles and news app and this is the easyest way to fix the problem
+
+from publications.posts.tests import PostTest
+from publications.news.tests import NewsTest
+from publications.articles.tests import ArticleTest

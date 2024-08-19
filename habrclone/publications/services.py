@@ -9,12 +9,15 @@ from .serializers import ContentSerializer
 from datetime import date
 import redis
 
-r = redis.Redis(host = settings.REDIS_HOST,
-                port = settings.REDIS_PORT,
-                db = settings.REDIS_DB)
 
 class PublicationService(ABC):
     def __init__(self):
+        self.r = redis.Redis(
+            host = settings.REDIS_HOST,
+            port = settings.REDIS_PORT,
+            db = settings.REDIS_DB
+        )
+        
         self.model, self.model_ct = self.get_model_and_model_ct(
             self.publication_app,
             self.model_name
@@ -73,12 +76,12 @@ class PublicationService(ABC):
     def _add_publication_view(self, publication_id):
         publication_key = self._get_publication_key(publication_id)
         publication_views = f'{publication_key}:views'
-        r.incr(publication_views)
+        self.r.incr(publication_views)
 
     def _get_publication_view(self, publication_id):
         publication_key = self._get_publication_key(publication_id)
         publication_views = f'{publication_key}:views'
-        views = r.get(publication_views)
+        views = self.r.get(publication_views)
         if not views:
             return 0
         return int( views.decode()) # binary string to int
@@ -87,7 +90,7 @@ class PublicationService(ABC):
     def _get_publication_rating(self, publication_id):
         publication_key = self._get_publication_key(publication_id)
         publication_rating_key = f'{publication_key}:rating'
-        publication_rating = r.get(publication_rating_key)
+        publication_rating = self.r.get(publication_rating_key)
         if not publication_rating:
             return 0
         
@@ -111,12 +114,12 @@ class PublicationService(ABC):
     def add_publication_creation(self):
         today = date.today()
         key = f'{today}:{self.publication_app}'
-        r.incr(key)
+        self.r.incr(key)
     
     def get_publcation_creation(self):
         today = date.today()
         key = f'{today}:{self.publication_app}'
-        return r.get(key)
+        return self.r.get(key)
 
     @abstractmethod
     def list(self):
