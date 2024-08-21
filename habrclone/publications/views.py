@@ -4,6 +4,8 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.contenttypes.models import ContentType
 from django.apps import apps
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from publications.posts.models import Post
 from publications.news.models import News
 from publications.articles.models import Article
@@ -37,6 +39,47 @@ class ContentAPIView(APIView):
         except model_class.DoesNotExist:
             return {'error': 'Publication doesnt exists'}, 404
 
+    @swagger_auto_schema(
+        operation_description = "Create a new content item (text, image, video, or file) and associate it with a publication.",
+        manual_parameters = [
+            openapi.Parameter(
+                'Authorization', openapi.IN_HEADER,
+                description = 'Bearer <token>',
+                type = openapi.TYPE_STRING, required = True
+            ),
+            openapi.Parameter(
+                'publication_type', openapi.IN_PATH,
+                description = "The type of publication (articles, news, posts).",
+                type = openapi.TYPE_STRING, required = True
+            ),
+            openapi.Parameter(
+                'publication_id', openapi.IN_PATH,
+                description = "The ID of the publication to associate with the content.",
+                type = openapi.TYPE_INTEGER, required = True
+            ),
+            openapi.Parameter(
+                'model_name', openapi.IN_PATH,
+                description = "The type of content (text, image, video, file).",
+                type = openapi.TYPE_STRING, required = True
+            ),
+        ],
+        request_body = openapi.Schema(
+            description = 'ONLY ONE OF THEM',
+            type = openapi.TYPE_OBJECT,
+            properties = {
+                'content': openapi.Schema(type = openapi.TYPE_STRING, description = 'Content data for text item.'),
+                'url': openapi.Schema(type = openapi.TYPE_STRING, description = 'Content data for video item.'),
+                'image': openapi.Schema(type = openapi.TYPE_STRING, description = 'Content data for image item. (This should be file not string)'),
+                'file': openapi.Schema(type = openapi.TYPE_STRING, description = 'Content data for file item. (This should be file not string)')
+            }
+        ),
+        responses = {
+            204: "Content created successfully.",
+            400: "Invalid data or parameters.",
+            403: "Not the author of the publication.",
+            404: "Publication does not exist."
+        }
+    )
     def post(self, request, publication_type, publication_id, model_name):
         error, publication = self._get_publication( request.user, publication_type, publication_id ) # declared in subclasses
         if error:
@@ -73,6 +116,43 @@ class ItemDetailAPIView(APIView):
 
         return item_serializer, item    
 
+
+    @swagger_auto_schema(
+        operation_description = "Retrieve a specific item based on model name and item ID.",
+        responses = {
+            200: openapi.Response(
+                description = "Successful response",
+                schema = openapi.Schema(
+                    type = 'object',
+                    properties = {
+                        'item_name': openapi.Schema(type = 'integer', description = 'Item Name'),
+                        'content, url, file, image': openapi.Schema(type = 'string', description = 'Item Content'),
+                        # Add other fields based on your serializer
+                    }
+                )
+            ),
+            403: openapi.Response(
+                description = "Forbidden, user is not the creator of the item"
+            ),
+        },
+        manual_parameters = [
+            openapi.Parameter(
+                'Authorization', openapi.IN_HEADER,
+                description = 'Bearer <token>',
+                type = openapi.TYPE_STRING, required = True
+            ),
+            openapi.Parameter(
+                'model_name', openapi.IN_PATH,
+                description = "The model name of the item (text, image, video, file)",
+                type = openapi.TYPE_STRING,
+            ),
+            openapi.Parameter(
+                'item_id', openapi.IN_PATH,
+                description = "The ID of the item",
+                type = openapi.TYPE_INTEGER
+            ),
+        ]   
+    )
     def get(self, request, model_name, item_id):
         item_serializer, item = self._get_item(request.user, model_name, item_id)
         if isinstance(item, int):
@@ -81,6 +161,47 @@ class ItemDetailAPIView(APIView):
         serializer = item_serializer( item )
         return Response( serializer.data )
     
+    @swagger_auto_schema(
+        operation_description = "Update a specific item based on model name and item ID.",
+        request_body = openapi.Schema(
+            description = 'ONLY ONE OF THEM',
+            type = openapi.TYPE_OBJECT,
+            properties = {
+                'content': openapi.Schema(type = openapi.TYPE_STRING, description = 'Content data for text item.'),
+                'url': openapi.Schema(type = openapi.TYPE_STRING, description = 'Content data for video item.'),
+                'image': openapi.Schema(type = openapi.TYPE_STRING, description = 'Content data for image item. (This should be file not string)'),
+                'file': openapi.Schema(type = openapi.TYPE_STRING, description = 'Content data for file item. (This should be file not string)')
+            }
+        ),
+        responses = {
+            204: openapi.Response(
+                description = "No content, update successful"
+            ),
+            400: openapi.Response(
+                description = "Bad request, invalid data"
+            ),
+            403: openapi.Response(
+                description = "Forbidden, user is not the creator of the item"
+            ),
+        },
+        manual_parameters = [
+            openapi.Parameter(
+                'Authorization', openapi.IN_HEADER,
+                description = 'Bearer <token>',
+                type = openapi.TYPE_STRING, required = True
+            ),
+            openapi.Parameter(
+                'model_name', openapi.IN_PATH,
+                description = "The model name of the item (text, image, video, file)",
+                type = openapi.TYPE_STRING,
+            ),
+            openapi.Parameter(
+                'item_id', openapi.IN_PATH,
+                description = "The ID of the item",
+                type = openapi.TYPE_INTEGER
+            )
+        ]
+    )
     def put(self, request, model_name, item_id):
         item_serializer, item = self._get_item(request.user, model_name, item_id)
         if isinstance(item, int):
@@ -93,6 +214,37 @@ class ItemDetailAPIView(APIView):
             return Response(status = status.HTTP_204_NO_CONTENT)
         return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
 
+    @swagger_auto_schema(
+        operation_description = "Delete a specific item based on model name and item ID.",
+        responses = { 
+            204: openapi.Response(
+                description = "No content, delete successful"
+            ),
+            403: openapi.Response(
+                description = "Forbidden, user is not the creator of the item"
+            ),
+            404: openapi.Response(
+                description = "Not found, item does not exist"
+            ),
+        },
+        manual_parameters = [
+            openapi.Parameter(
+                'Authorization', openapi.IN_HEADER,
+                description = 'Bearer <token>',
+                type = openapi.TYPE_STRING, required = True
+            ),
+            openapi.Parameter(
+                'model_name', openapi.IN_PATH,
+                description = "The model name of the item (text, image, video, file)",
+                type = openapi.TYPE_STRING,
+            ),
+            openapi.Parameter(
+                'item_id', openapi.IN_PATH,
+                description = "The ID of the item",
+                type = openapi.TYPE_INTEGER
+            )
+        ]
+    )
     def delete(self, request, model_name, item_id):
         item_serializer, item = self._get_item(request.user, model_name, item_id)
         if isinstance(item, int):

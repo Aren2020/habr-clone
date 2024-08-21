@@ -1,13 +1,11 @@
 from rest_framework import serializers
-from django.contrib.contenttypes.models import ContentType
 from .models import Content, Text, Image, File, Video, User
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 
-                  'first_name', 'last_name',
-                  'username', 'email']
+        fields = ['id', 'first_name', 'last_name',
+                  'username', 'email', 'profile_picture']
 
 class TextSerializer(serializers.ModelSerializer):
     class Meta:

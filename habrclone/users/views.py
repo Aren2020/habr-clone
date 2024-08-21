@@ -322,6 +322,31 @@ class PasswordResetDoneAPIView(APIView):
 class SearchAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        operation_description = 'Retrieve user details',
+        manual_parameters = [
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description = 'Bearer <token>',
+                type = openapi.TYPE_STRING,
+                required = True
+            ),
+            openapi.Parameter(
+                'query',
+                openapi.IN_PATH,
+                description = 'Search query to filter users by username',
+                type = openapi.TYPE_STRING,
+                required = True
+            )
+        ],
+        responses = {
+            200: openapi.Response(
+                'User details',
+                UserEditSerializer(many = True)
+            ),
+        },
+    )
     def get(self, request, query):
         users = User.objects.filter(
             username__istartswith = query

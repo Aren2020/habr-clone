@@ -90,10 +90,10 @@ class PublicationService(ABC):
     def _get_publication_rating(self, publication_id):
         publication_key = self._get_publication_key(publication_id)
         publication_rating_key = f'{publication_key}:rating'
-        publication_rating = self.r.get(publication_rating_key)
-        if not publication_rating:
+        if not self.r.exists(publication_rating_key):
             return 0
-        
+
+        publication_rating = self.r.get(publication_rating_key)
         rating = int( publication_rating.decode() ) # binary string to number
         return rating 
 
