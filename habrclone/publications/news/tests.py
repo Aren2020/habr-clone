@@ -16,14 +16,13 @@ class NewsTest(APITestCase):
         access_token = AccessToken.for_user(self.user)
         self.client.credentials(HTTP_AUTHORIZATION = f'Bearer {access_token}')
 
-        news_data = {
+        self.news_data = {
             'author': self.user,
-            'intro_image': None,
             'intro_text': 'intro_text',
             'title': 'Title'
         }
-        self.news = News.objects.create( **news_data )
-        News.objects.create( **news_data )
+        self.news = News.objects.create( **self.news_data )
+        News.objects.create( **self.news_data )
         
         text = Text.objects.create( creator = self.user, content = 'text item')
         Content.objects.create(
@@ -44,6 +43,18 @@ class NewsTest(APITestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(len(res.data), 2)
     
+    @patch('publications.articles.views.article_service.r')
+    def test_create_article(self, mock_obj):
+        mock_obj.return_value = b'0' # mock redis
+
+        self.news_data.update({'tags': ['tg1', 'tg2']})
+        res = self.client.post(self.news_list_url, self.news_data)
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(News.objects.all().count(), 3)
+
+        res = self.client.post(self.news_list_url, {})
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(set(res.data.keys()), set(['intro_text', 'title', 'tags']))
     
     @patch('publications.news.views.news_service.r')
     def test_detail_list(self, mock_obj):

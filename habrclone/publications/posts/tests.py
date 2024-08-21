@@ -43,6 +43,17 @@ class PostTest(APITestCase):
             else:
                 self.assertEqual( len(items), 0)
 
+    @patch('publications.articles.views.article_service.r')
+    def test_create_article(self, mock_obj):
+        mock_obj.return_value = b'0' # mock redis
+
+        res = self.client.post(self.post_list_url, { 'mention': [1] })
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(Post.objects.all().count(), 3)
+
+        res = self.client.post(self.post_list_url)
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(set(res.data.keys()), set(['mention']))
     
     def test_bad_user(self):
         user = User.objects.create(

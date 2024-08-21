@@ -16,15 +16,14 @@ class ArticleTest(APITestCase):
         access_token = AccessToken.for_user(self.user)
         self.client.credentials(HTTP_AUTHORIZATION = f'Bearer {access_token}')
 
-        article_data = {
+        self.article_data = {
             'author': self.user,
-            'intro_image': None,
             'intro_text': 'intro_text',
             'title': 'Title',
-            'level': 'easy'
+            'level': 'easy',
         }
-        self.article = Article.objects.create( **article_data )
-        Article.objects.create( **article_data )
+        self.article = Article.objects.create( **self.article_data )
+        Article.objects.create( **self.article_data )
         
         text = Text.objects.create( creator = self.user, content = 'text item')
         Content.objects.create(
@@ -44,7 +43,20 @@ class ArticleTest(APITestCase):
         res = self.client.get(self.article_list_url)
         self.assertEqual(res.status_code, 200)
         self.assertTrue(len(res.data) <= 4)
-    
+
+    @patch('publications.articles.views.article_service.r')
+    def test_create_article(self, mock_obj):
+        mock_obj.return_value = b'0' # mock redis
+
+        self.article_data.update({'tags': ['tg1', 'tg2']})
+        res = self.client.post(self.article_list_url, self.article_data)
+
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(Article.objects.all().count(), 3)
+
+        res = self.client.post(self.article_list_url, {})
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(set(res.data.keys()), set(['intro_text', 'title', 'tags']))
     
     @patch('publications.articles.views.article_service.r')
     def test_detail_list(self, mock_obj):
