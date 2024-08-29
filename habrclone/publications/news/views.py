@@ -70,8 +70,12 @@ class ListAPIView(APIView):
         ]
     )
     def get(self, request):
-        page_number = request.GET.get('page_number')
-        news_data = news_service.list(page_number)
+        page_number = request.GET.get('page_number', 1)
+        
+        news = news_service.get_all_publications()
+        page = news_service.paginate_publications( news, page_number )
+        news_data = news_service.list(page)
+
         return Response( news_data )
 
     @swagger_auto_schema(
@@ -171,6 +175,76 @@ class DetailAPIView(APIView):
         if isinstance(data, int):
             return Response(status = data)
         return Response(data)
+
+class MineAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description = "Retrieve a list of news with pagination.",
+        responses = {
+            200: openapi.Response(
+                description = "A successful response",
+                examples = {
+                    'application/json':
+                    [
+                        {
+                            "id": 1,
+                            "author": {
+                              "id": 1,
+                              "first_name": "",
+                              "last_name": "",
+                              "username": "Aren",
+                              "email": "",
+                              "profile_picture": "/media/images/image_name.jpeg"
+                            },
+                            "mention": [
+                                {
+                                    "id": 2,
+                                    "first_name": "string",
+                                    "last_name": "string",
+                                    "username": "Allo",
+                                    "email": "user@example.com",
+                                    "profile_picture": None
+                                }
+                            ],
+                            "tags": [
+                                "tg1",
+                                "tg2"
+                            ],
+                            "created_at": "2024-08-20T11:28:48.010700Z",
+                            "status": True,
+                            "title": "title",
+                            "intro_text": "intro",
+                            "intro_image": "/media/images/image_name.jpeg",
+                            "read_time": 2,
+                            "views": 10,
+                            "rating": -1
+                        }
+                    ]
+                }
+            ) 
+        },
+        manual_parameters = [
+            openapi.Parameter(
+                'Authorization', openapi.IN_HEADER,
+                description = 'Bearer <token>',
+                type = openapi.TYPE_STRING, required = True
+            ),
+            openapi.Parameter(
+                'page_number', openapi.IN_QUERY,
+                description = "Page number for pagination",
+                type = openapi.TYPE_INTEGER
+            ),
+        ]
+    )
+    def get(self, request):
+        page_number = request.GET.get('page_number', 1)
+        
+        news = news_service.get_all_publications().filter( author = request.user )
+        page = news_service.paginate_publications( news, page_number )
+        news_data = news_service.list(page)
+
+        return Response( news_data )
 
 class EditAPIView(PublicationEditAPIView):
 

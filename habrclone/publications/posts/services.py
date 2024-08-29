@@ -21,9 +21,7 @@ class PostService(PublicationService):
         })
         return post_data
 
-    def list(self, page_number):
-
-        posts = self._get_all_publications(page_number)
+    def list(self, posts):
         if not posts:
             return []
         

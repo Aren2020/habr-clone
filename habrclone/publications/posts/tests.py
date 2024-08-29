@@ -105,5 +105,3 @@ class PostTest(APITestCase):
         post_delete = self.client.delete(self.post_edit_url)
         self.assertEqual(post_delete.status_code, 204)
         self.assertFalse( Post.objects.filter(id = self.post.id).exists() )
-
-# git stash test

@@ -9,8 +9,7 @@ class NewsService(PublicationService):
         self.model_name = 'News'
         PublicationService.__init__(self)
 
-    def list(self, page_number):
-        news = self._get_all_publications(page_number)
+    def list(self, news):
         if not news:
             return []
 

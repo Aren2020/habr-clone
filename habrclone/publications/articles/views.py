@@ -67,8 +67,12 @@ class ListAPIView(APIView):
         ]
     )
     def get(self, request):
-        page_number = request.GET.get('page_number')
-        articles_data = article_service.list(page_number)
+        page_number = request.GET.get('page_number', 1)
+        
+        articles = article_service.get_all_publications()
+        page = article_service.paginate_publications( articles, page_number )
+        articles_data = article_service.list(page)
+        
         return Response( articles_data )
 
     @swagger_auto_schema(
@@ -170,6 +174,73 @@ class DetailAPIView(APIView):
         if isinstance(data, int):
             return Response(status = data)
         return Response(data)
+
+class MineAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description = "Retrieve a list of articles with pagination.",
+        responses = {
+            200: openapi.Response(
+                description = "A successful response",
+                examples = {
+                    'application/json':
+                    [
+                        {
+                            "id": 1,
+                            "author": {
+                              "id": 1,
+                              "first_name": "",
+                              "last_name": "",
+                              "username": "Aren",
+                              "email": "",
+                              "profile_picture": "/media/images/image_name.jpeg"
+                            },
+                            "mention": [
+                                {
+                                    "id": 2,
+                                    "first_name": "string",
+                                    "last_name": "string",
+                                    "username": "Allo",
+                                    "email": "user@example.com",
+                                    "profile_picture": None
+                                }
+                            ],
+                            "created_at": "2024-08-17T15:01:07.913426Z",
+                            "status": True,
+                            "title": "Understanding Django Rest Framework",
+                            "intro_text": "This article explains the basics of Django Rest Framework and how to create APIs.",
+                            "intro_image": None,
+                            "level": "easy",
+                            "read_time": 2,
+                            "views": 6,
+                            "rating": -1
+                        }
+                    ]
+                }
+            ) 
+        },  
+        manual_parameters = [
+            openapi.Parameter(
+                'Authorization', openapi.IN_HEADER,
+                description = 'Bearer <token>',
+                type = openapi.TYPE_STRING, required = True
+            ),
+            openapi.Parameter(
+                'page_number', openapi.IN_QUERY,
+                description = "Page number for pagination",
+                type = openapi.TYPE_INTEGER
+            )
+        ]
+    )
+    def get(self, request):
+        page_number = request.GET.get('page_number', 1)
+        
+        articles = article_service.get_all_publications().filter( author = request.user )
+        page = article_service.paginate_publications( articles, page_number )
+        articles_data = article_service.list(page)
+
+        return Response( articles_data )
 
 class EditAPIView(PublicationEditAPIView):
 

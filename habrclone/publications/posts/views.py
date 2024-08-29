@@ -5,7 +5,7 @@ from rest_framework import status
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from ..views import PublicationEditAPIView
-from .serializers import PostSerializer, PostListSerializer
+from .serializers import PostSerializer
 from .services import PostService
 from .models import Post
 
@@ -72,8 +72,12 @@ class ListAPIView(APIView):
         ]
     )
     def get(self, request):
-        page_number = request.GET.get('page_number')
-        posts_data = post_service.list(page_number)
+        page_number = request.GET.get('page_number', 1)
+        
+        posts = post_service.get_all_publications()
+        page = post_service.paginate_publications( posts, page_number )
+        posts_data = post_service.list(page)
+
         return Response( posts_data )
     
     @swagger_auto_schema(
@@ -105,6 +109,77 @@ class ListAPIView(APIView):
                 
             return Response(status = status.HTTP_201_CREATED)
         return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
+
+class MineAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description = "Retrieve a list of posts with pagination.",
+        responses = {
+            200: openapi.Response(
+                description = "A successful response",
+                examples = {
+                    'application/json':
+                        [
+                          {
+                            "id": 1,
+                            "author": {
+                              "id": 1,
+                              "first_name": "",
+                              "last_name": "",
+                              "username": "Aren",
+                              "email": "",
+                              "profile_picture": "/media/images/image_name.jpeg"
+                            },
+                            "mention": [
+                              {
+                                "id": 2,
+                                "first_name": "string",
+                                "last_name": "string",
+                                "username": "Allo",
+                                "email": "user@example.com",
+                                "profile_picture": None
+                              }
+                            ],
+                            "created_at": "2024-08-20T08:00:33.638470Z",
+                            "status": True,
+                            "items": [
+                              {
+                                "id": 3,
+                                "item": {
+                                  "item_name": "text",
+                                  "content": "t2"
+                                }
+                              }
+                            ],
+                            "views": 31,
+                            "rating": 0
+                          }
+                        ]
+                }
+            ) 
+        }, 
+        manual_parameters = [
+            openapi.Parameter(
+                'Authorization', openapi.IN_HEADER,
+                description = 'Bearer <token>',
+                type = openapi.TYPE_STRING, required = True
+            ),
+            openapi.Parameter(
+                'page_number', openapi.IN_QUERY,
+                description = "Page number for pagination",
+                type = openapi.TYPE_INTEGER
+            ),
+        ]
+    )
+    def get(self, request):
+        page_number = request.GET.get('page_number', 1)
+        
+        posts = post_service.get_all_publications().filter( author = request.user )
+        page = post_service.paginate_publications( posts, page_number )
+        posts_data = post_service.list(page)
+
+        return Response( posts_data )
 
 class EditAPIView(PublicationEditAPIView):
 

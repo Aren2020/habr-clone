@@ -9,7 +9,6 @@ from .serializers import ContentSerializer
 from datetime import date
 import redis
 
-
 class PublicationService(ABC):
     def __init__(self):
         self.r = redis.Redis(
@@ -30,7 +29,7 @@ class PublicationService(ABC):
         model_ct = ContentType.objects.get_for_model(model)
         return model, model_ct
 
-    def _get_all_publications(self, page_number = 1):
+    def get_all_publications(self):
         ## add when user is auth dont recommend him his publications
 
         ## add algorithm or smth else for recommendation
@@ -42,6 +41,9 @@ class PublicationService(ABC):
         else:
             publications_list = publications_list.prefetch_related('mention')    
 
+        return publications_list
+        
+    def paginate_publications(self, publications_list, page_number):
         paginator = Paginator(publications_list, 4)
         try:
             publications = paginator.page(page_number)

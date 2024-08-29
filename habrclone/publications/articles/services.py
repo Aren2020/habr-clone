@@ -10,11 +10,9 @@ class ArticleService(PublicationService):
         self.model_name = 'Article'
         PublicationService.__init__(self)
 
-    def list(self, page_number):
-        articles = self._get_all_publications(page_number)
+    def list(self, articles):
         if not articles:
-            return []
-        
+            return []        
 
         articles_ids = articles.values_list('id', flat = True)
         contents = self._get_publication_contents(articles_ids).filter(
